@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kb-mcp-server"
+version = "0.1.0"
+description = "知识库向量搜索 MCP Server"
+requires-python = ">=3.9"
+dependencies = [
+    "fastmcp>=2.0.0",
+    "chromadb>=0.5.0",
+    "sentence-transformers>=2.2.0",
+    "pyyaml>=6.0",
+    "dashscope>=1.14.0",
+]
+
+[project.scripts]
+kb-mcp-server = "kb_mcp_server.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["kb_mcp_server*"]
