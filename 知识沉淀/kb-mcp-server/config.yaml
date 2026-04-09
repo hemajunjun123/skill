@@ -1,0 +1,21 @@
+# 知识库路径（必须修改为你的实际路径）
+knowledge_base_path: "/Users/zhiying/Desktop/AI/知识库"
+
+# 向量数据库存储路径（默认在知识库目录下的 .vectordb）
+# 留空则自动使用 {knowledge_base_path}/.vectordb
+chroma_db_path: ""
+
+# Embedding 配置
+embedding:
+  # 可选: "local" 或 "dashscope"
+  provider: "local"
+
+  # 本地模型配置（provider=local 时使用）
+  local:
+    model_name: "shibing624/text2vec-base-chinese"
+
+  # DashScope API 配置（provider=dashscope 时使用）
+  dashscope:
+    # API Key 从环境变量 DASHSCOPE_API_KEY 读取，也可直接填写
+    api_key: ""
+    model: "text-embedding-v3"
