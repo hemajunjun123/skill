@@ -1,1 +1,497 @@
-# Knowledge Deposit Skill **A universal knowledge distillation and repository system that transforms unstructured information into searchable, structured knowledge base.** ## Overview Knowledge Deposit is an intelligent skill that automatically identifies, extracts, and organizes valuable business insights from various sources (conversations, documents, images, PDFs, links) into a structured knowledge repository with semantic search capabilities. ## Core Capabilities ### 🎯 What It Does - **Automatic Knowledge Extraction**: Identifies valuable business information from conversations, documents, or meetings and distills it into reusable knowledge - **Intelligent Classification**: Automatically categorizes content into four knowledge types: - **Business Knowledge**: Long-term business logic, rules, processes, and decisions - **Strategy Insights**: Experimental results, success/failure patterns, methodologies (with 90-day validity review) - **Data Definitions**: Metric formulas, calculation logic, data sources (with 180-day validity review) - **Meeting Notes**: Raw discussion records with automatic extraction of key decisions - **Smart Deduplication**: Detects relationships between new and existing knowledge (supplement, different premises, updates, or conflicts) - **Semantic Search**: Natural language retrieval after optional installation of MCP-based search server - **Batch Processing**: Handles long documents by splitting into independent knowledge units (max 3 per batch for context management) ### 📥 Input Sources | Source | Processing | |--------|------------| | Text in conversation | Direct processing | | Local files | Read and extract content | | Links (e.g., DingTalk docs) | Attempt to fetch, fallback to manual input | | Images/Screenshots | OCR extraction with user confirmation | | PDFs | Multi-page reading and extraction | ### 🔧 Operating Modes 1. **Interactive Mode**: Manual trigger → Review提炼 results → Confirm before入库 2. **Silent Mode**: Agent/MCP auto-call → Fully automatic processing 3. **Conversation Deposit Mode**: Auto-identify valuable info during dialogue → Batch process at conversation end ## Quick Start ### Installation ```bash # Clone or copy this skill to your .skills directory # The skill will auto-initialize on first use ``` ### First Use Initialization On first trigger, the skill will: 1. Ask for knowledge base path (default: `~/知识库`) 2. Optionally install semantic search (requires Python 3.10+, ~500MB) 3. Create directory structure and initial files ### Usage Examples #### Example 1: Direct Text Deposit ``` User: Help me deposit this: △AAC = Experiment Group AAC - Control Group AAC, confirmed with BI team Skill: [Classifies as Data Definition] → [Extracts formula] → [Asks confirmation] → [Stores in 数据口径/] ``` #### Example 2: Meeting Notes with Auto-Split ``` User: /deposit [pastes meeting transcript] Skill: 1. Stores full transcript in 会议纪要/ 2. Extracts decisions → 业务知识/ 3. Extracts metric definitions → 数据口径/ 4. Extracts conclusions → 策略沉淀/ ``` #### Example 3: Conversation Review ``` User: /deposit review Skill: Scans conversation history → Lists N candidate insights → Batch processes upon confirmation ``` ## Knowledge Structure ``` {knowledge_base_root}/ ├── _summary.md # Global overview ├── _tags.md # Tag registry ├── 业务知识/ # Business Knowledge │ ├── _summary.md │ └── YYYY-MM-DD-title.md ├── 策略沉淀/ # Strategy Insights │ ├── _summary.md │ └── ... ├── 数据口径/ # Data Definitions │ ├── _summary.md │ └── ... └── 会议纪要/ # Meeting Notes ├── _summary.md └── ... ``` ### File Naming Convention `YYYY-MM-DD-{title}.md` ### Frontmatter Schema Each knowledge file includes structured metadata: ```yaml --- title: "Example Title" category: "Business Knowledge" tags: ["decision-log"] status: "active" source: "meeting discussion" date: "2026-04-09" related_project: "AAC" # or "general" related_knowledge: ["2026-03-15-another-title.md"] valid_until: "2026-07-08" # auto-calculated based on category --- ``` ## Key Features ### ✅ Content Quality Rules - **Zero Tolerance for Data Fabrication**: All numbers/metrics must come from original text - **Logical Inference Allowed**: Can summarize and reason based on provided information - **Source Attribution**: Every field traces back to original content or marked as "[待补充]" ### ✅ Relationship Detection When storing new knowledge, automatically detects relationship with existing entries: | Relationship | Action | |-------------|--------| | **Supplement** | Merge into existing entry | | **Different Premises** | Keep both, cross-reference | | **Same Premise Update** | Replace old content, keep revision history | | **True Conflict** | Keep both, flag for user review | ### ✅ Aging Management - **Strategy Insights**: 90-day validity → auto-reminder for review - **Data Definitions**: 180-day validity → auto-reminder for confirmation - **Business Knowledge**: No expiry (long-term stable) - **Meeting Notes**: No expiry (historical record) ### ✅ Automatic Linking New entries automatically search and link to related existing knowledge (bidirectional references). ## Trigger Methods - **Slash Commands**: `/沉淀`, `/沉淀 回顾` - **Natural Language**: "帮我沉淀一下", "deposit this" - **Agent/MCP Call**: Programmatic invocation - **Auto-Reminder**: End-of-conversation prompt when valuable info detected ## Configuration ### Optional: Semantic Search Setup If you choose to install semantic search during initialization: - Installs `kb-mcp-server` (local MCP server for vector search) - Creates embeddings for all knowledge entries - Enables natural language queries like "show me redemption strategy experiments" ### CLAUDE.md Integration Add to your `CLAUDE.md` for proactive reminders: ``` When conversation exceeds 20 turns with business discussion, remind before ending: "Found N items worth depositing, run /沉淀 回顾?" ``` ## Use Cases ### For Product Managers - Capture experiment results and strategy decisions - Maintain living documentation of business rules - Track metric definitions across teams ### For Teams - Convert meeting discussions into actionable knowledge - Build shared playbook of successes and failures - Prevent knowledge loss from turnover ### For AI Agents - Provide structured context for decision-making - Enable RAG-based reasoning with verified knowledge - Create feedback loop: action → learning → improved action ## Design Principles 1. **Split Aggressively**: One knowledge unit = one independent file (better retrieval precision) 2. **Confirm Before Store**: Interactive mode always shows提炼 results before入库 3. **No Hallucination**: Data fields strictly from source; logic can be inferred but marked with uncertainty 4. **Time-Aware**: Expiring knowledge gets review reminders 5. **Relationship-Aware**: Detects conflicts/updates instead of simple deduplication ## Output Format All knowledge entries follow strict templates ensuring consistency: **Business Knowledge Template:** ```markdown ### Definition {What it is} ### Rules/Processes {Specific rules or workflows} ### Scope {Applicable scenarios/projects} ``` **Strategy Insights Template:** ```markdown ### Background {Context/situation} ### Preconditions {Applicable conditions/target audience} ### Approach {Specific strategy/method} ### Results {Data outcomes} ### Conclusion {Reusable lesson or insight} ``` ## License [Your License Here] ## Author Developed by zhiying for enterprise knowledge management and AI agent memory systems. --- **Ready to transform your conversations into institutional knowledge? Just say "/沉淀" and let the skill handle the rest.**
+# knowledge-deposit-hema
+
+## 知识沉淀技能
+
+**通用知识沉淀能力，将各类信息结构化提炼后沉淀到知识库中，支持语义搜索检索**
+
+---
+
+## 📖 概述
+
+knowledge-deposit-zy 是一个智能知识管理技能，能够自动识别、提取和整理来自对话、文档、会议、图片等多种来源的有价值业务信息，并将其结构化沉淀到本地知识库中。支持智能分类、重复检测、冲突识别、时效管理和语义搜索等功能。
+
+核心理念：**让知识沉淀变得简单、规范、可复用**，避免有价值的业务洞察散落在聊天记录和文档中无法被有效检索和传承。
+
+---
+
+## 🎯 核心能力
+
+### 知识分类体系
+
+技能会自动将内容归类到四大知识类型：
+
+| 分类 | 定位 | 时效性 | 典型内容 |
+|------|------|--------|----------|
+| **业务知识** | 长期稳定的业务逻辑、流程规范、行业认知、决策记录 | 无限期 | "ROI 必须大于 1"、"高价值用户定义标准"、"TS 算法决策" |
+| **策略沉淀** | 阶段性的实验结论、成功经验、失败教训、方法论 | 90 天有效期 | "5 元红包转化率 12.3%，高于 10 元的 8.5%"、"春节营销方案效果复盘" |
+| **数据口径** | 指标定义、计算公式、数据来源说明 | 180 天有效期 | "△AAC = 实验组 AAC - 对照组 AAC"、"日活 DAU 计算逻辑" |
+| **会议纪要** | 原始讨论记录，关键结论会提炼到其他三类 | 无限期 | 周会记录、评审会纪要、对齐会讨论 |
+
+### 输入源支持
+
+支持多种输入方式，适应不同场景：
+
+- **文字内容**：直接在对话中粘贴文字内容
+- **本地文件**：读取本地文档、笔记、报告等
+- **链接**：钉钉文档、网页链接（尝试自动抓取）
+- **图片/截图**：OCR 识别图片中的文字内容
+- **PDF 文档**：多页 PDF 读取和提取
+
+### 三种运行模式
+
+1. **交互模式**（人工触发）
+   - 用户主动调用 `/沉淀` 或直接发送内容
+   - 提炼后展示确认，用户审核后再入库
+   - 适合重要知识的精细处理
+
+2. **静默模式**（Agent/MCP 调用）
+   - Agent 或 MCP 服务自动调用
+   - 全自动处理，直接入库
+   - 适合批量处理和自动化流程
+
+3. **对话沉淀模式**（日常对话）
+   - 对话过程中自动识别值得沉淀的业务信息
+   - 对话结束时批量提醒和处理
+   - 可通过 `/沉淀 回顾` 主动触发
+
+---
+
+## 🚀 快速开始
+
+### 安装
+
+```bash
+# 将 skill 复制到你的 .skills 目录
+# 首次使用时会自动初始化
+```
+
+### 首次使用初始化
+
+第一次触发时，技能会引导你完成以下步骤：
+
+1. **确认知识库路径**
+   - 默认存放在 `~/知识库`
+   - 可以指定其他路径
+
+2. **选择是否安装语义搜索**（可选）
+   - 安装后可用自然语言搜索（如"关于红包策略的经验"）
+   - 需要 Python 3.10+，约占 500MB 磁盘空间
+   - 安装过程约 2-3 分钟
+
+3. **自动创建目录结构**
+   ```
+   ~/知识库/
+   ├── _summary.md              # 全局概览
+   ├── _tags.md                 # 标签注册表
+   ├── 业务知识/
+   │   ├── _summary.md
+   │   └── ...
+   ├── 策略沉淀/
+   │   ├── _summary.md
+   │   └── ...
+   ├── 数据口径/
+   │   ├── _summary.md
+   │   └── ...
+   └── 会议纪要/
+       ├── _summary.md
+       └── ...
+   ```
+
+### 基本用法
+
+#### 用法 1：直接沉淀内容
+
+直接把内容发给技能，或加上 `/沉淀` 命令：
+
+```
+用户：帮我沉淀一下：△AAC = 实验组 AAC - 对照组 AAC，这个是跟 BI 对齐后确认的口径
+
+技能处理：
+1. 自动分类为「数据口径」
+2. 提炼结构化内容（指标名称、计算公式、数据来源）
+3. 展示确认
+4. 用户确认后入库到 数据口径/
+```
+
+#### 用法 2：处理会议纪要
+
+```
+用户：/沉淀 [粘贴会议记录]
+
+技能处理：
+1. 整段记录入 会议纪要/
+2. 自动提炼决策 → 业务知识/
+3. 自动提炼口径 → 数据口径/
+4. 自动提炼经验结论 → 策略沉淀/
+```
+
+#### 用法 3：对话回顾沉淀
+
+```
+用户：/沉淀 回顾
+
+技能处理：
+1. 扫描本次对话历史
+2. 识别值得沉淀的业务信息
+3. 列出候选清单
+4. 用户确认后批量入库
+```
+
+---
+
+## 📂 知识条目格式
+
+每个知识条目都是一个独立的 Markdown 文件，包含标准化的 frontmatter 和正文结构。
+
+### 文件名规则
+
+```
+YYYY-MM-DD-标题.md
+```
+
+示例：`2026-04-08-AAC 实验分桶设计.md`
+
+### 文件模板示例
+
+#### 策略沉淀条目
+
+```markdown
+---
+标题："5 元红包新客转化实验结论"
+分类："策略沉淀"
+子标签：["成功案例", "红包策略"]
+状态："有效"
+来源："MAB 调优第 3 轮实验"
+日期："2026-04-08"
+有效期："2026-07-08"
+关联项目："AAC"
+相关知识：[]
+---
+
+### 背景
+新客获取成本持续上升，探索不同面额红包对新客转化的影响
+
+### 前提/适用条件
+- 人群：站外未注册新客
+- 渠道：巨浪投放
+- 时间段：2026 年 Q1
+
+### 做法
+- 实验组 A：5 元无门槛红包
+- 实验组 B：10 元无门槛红包
+- 对照组：无红包
+
+### 效果
+- 5 元组转化率：12.3%
+- 10 元组转化率：8.5%
+- 5 元组 ROI：1:3.2
+- 10 元组 ROI：1:4.5
+
+### 结论
+- 小额红包（5 元）更适合新客转化场景
+- 大额红包（10 元）ROI 更优但转化率较低
+- 建议：新客场景优先使用 5 元红包，高价值人群可尝试 10 元
+
+---
+
+> 修订记录：
+> - 2026-04-08：初始版本
+```
+
+#### 数据口径条目
+
+```markdown
+---
+标题："△AAC 计算口径"
+分类："数据口径"
+子标签：["计算逻辑"]
+状态："有效"
+来源："BI 团队对齐"
+日期："2026-04-08"
+有效期："2026-10-05"
+关联项目："AAC"
+相关知识：[]
+---
+
+### 指标名称
+△AAC（增量年度活跃消费者）
+
+### 计算公式
+实验组 AAC - 对照组 AAC
+
+### 数据来源
+[待补充]
+
+### 备注
+与 BI 团队对齐确认的官方口径
+
+---
+
+> 修订记录：
+> - 2026-04-08：初始版本
+```
+
+---
+
+## ✨ 核心特性详解
+
+### 智能拆分机制
+
+长文档或多主题内容会自动拆分为独立的知识条目：
+
+**必须拆分的场景：**
+- 多个实验/AB 测试 → 每个实验独立一条
+- 多个指标/口径 → 每个口径独立一条
+- 多个策略/方案 → 每个策略独立一条
+- 混合分类内容 → 按分类拆分
+- 长文档（超过 500 字）→ 按主题段落拆分
+
+**不需要拆分的场景：**
+- 同一实验的多组数据（对照组 vs 实验组）
+- 同一指标的分子/分母/计算逻辑
+- 同一策略的背景 + 做法 + 效果 + 结论
+
+### 重复与冲突检测
+
+入库前自动检测与已有知识的关系，采取不同处理策略：
+
+| 关系类型 | 判断依据 | 处理方式 |
+|----------|----------|----------|
+| **补充型** | 同主题，新增新维度 | 合并到已有条目 |
+| **不同前提** | 同主题，不同适用条件 | 两条共存，互相引用 |
+| **同前提更新** | 同前提，新结论替代旧结论 | 覆盖已有条目，旧内容入修订记录 |
+| **真实冲突** | 同前提，结论矛盾 | 两条共存，标记冲突，提醒用户判断 |
+
+**示例：**
+- 已有："5 元红包新客转化率 12.3%（全量人群）"
+- 新增："5 元红包高价值用户转化率仅 3%"
+- 判断：**不同前提**（人群不同），两条共存并互相引用
+
+### 数据零容忍原则
+
+**严格约束：** 所有数字、指标值、比例、金额等数据内容必须原文有才能写，绝对不可编造。
+
+**允许的操作：**
+- ✅ 对原文进行结构化整理
+- ✅ 提炼核心结论
+- ✅ 基于原文做逻辑归纳
+- ✅ 补充合理的逻辑连接词
+
+**禁止的操作：**
+- ❌ 编造任何数字（原文没有的数字一个都不能写）
+- ❌ 对原文数字做二次计算（除非用户明确要求）
+- ❌ 添加原文中完全没有的外部知识
+- ❌ 将不确定表述改为确定表述
+
+### 时效管理
+
+不同分类的知识有不同的有效期管理：
+
+| 分类 | 默认有效期 | 到期处理 |
+|------|-----------|----------|
+| 业务知识 | 无限期 | 长期有效 |
+| 策略沉淀 | 90 天 | 超期提醒 review |
+| 数据口径 | 180 天 | 超期提醒确认 |
+| 会议纪要 | 无限期 | 原始记录不过期 |
+
+当搜索或沉淀时发现超期条目，会主动提醒：
+
+```
+⏰ 以下知识条目可能已过期，建议确认是否仍然有效：
+  1. 5 元红包新客转化实验结论 | 策略沉淀 | 入库于 2026-01-08，已超过建议有效期 30 天
+     → 选择：仍然有效 / 已过期归档 / 需要更新
+```
+
+### 自动关联机制
+
+新知识入库时，自动搜索已有知识库，建立关联关系：
+
+- 用语义搜索或关键词匹配找到相关条目
+- 在 frontmatter 的"相关知识"字段中互相引用
+- 形成知识网络，便于后续检索和追溯
+
+---
+
+## 🔧 配置与集成
+
+### CLAUDE.md 配置建议
+
+在项目的 `CLAUDE.md` 中添加以下配置，让技能更好地融入日常工作流：
+
+```yaml
+# 知识沉淀配置
+knowledge_deposit:
+  base_path: "~/知识库"  # 知识库根目录
+  auto_remind: true      # 长对话结束时自动提醒沉淀
+  batch_size: 3          # 每批处理的知识条目数上限
+  
+# 对话沉淀触发条件
+conversation_deposit:
+  min_turns: 20          # 对话超过 20 轮时提醒
+  auto_identify: true    # 自动识别值得沉淀的业务信息
+```
+
+### MCP Server 集成
+
+如果安装了语义搜索功能，技能会自动注册 `kb-search` MCP Server：
+
+```bash
+# 查看已注册的 MCP 服务器
+claude mcp list
+
+# 手动添加（如未自动注册）
+claude mcp add kb-search -s user \
+  -e HF_ENDPOINT=https://hf-mirror.com \
+  -- ~/kb-mcp-server/.venv/bin/python -m kb_mcp_server
+```
+
+### Agent 调用示例
+
+在 Agent 工作流中静默调用：
+
+```python
+# 伪代码示例
+agent.call_skill(
+    skill="knowledge-deposit-zy",
+    mode="silent",
+    content={
+        "text": "实验结论：5 元组转化率 12.3%，10 元组 ROI 1:4.5",
+        "source": "MAB 实验第 3 轮"
+    }
+)
+```
+
+---
+
+## 💡 使用场景
+
+### 场景 1：产品经理的日常沉淀
+
+**场景描述：** 每天参加各种会议、阅读文档、做决策，需要将这些信息结构化保存。
+
+**使用方法：**
+- 会议结束后，将纪要发给技能：`/沉淀 [会议记录]`
+- 阅读文档时，将关键结论摘抄下来沉淀
+- 做出重要决策后，立即记录：`帮我沉淀这个决策：...`
+
+**收益：**
+- 决策过程和依据完整保留
+- 新人 onboarding 时可快速了解历史背景
+- 避免"之前为什么这么定"的反复询问
+
+### 场景 2：团队知识库建设
+
+**场景描述：** 团队需要统一的知识管理平台，避免知识分散在个人手中。
+
+**使用方法：**
+- 统一知识库路径，团队成员共享
+- 定期review策略沉淀（90 天有效期自动提醒）
+- 新项目启动前，先搜索已有相关知识
+
+**收益：**
+- 知识资产集中管理
+- 避免重复踩坑
+- 策略迭代有迹可循
+
+### 场景 3：AI Agent 的记忆系统
+
+**场景描述：** Agent 需要在长期运行中积累经验和知识。
+
+**使用方法：**
+- Agent 完成任务后，自动调用技能沉淀结果
+- 下次遇到类似任务时，先搜索知识库
+- 形成"执行→沉淀→检索→优化"的正向循环
+
+**收益：**
+- Agent 具备长期记忆能力
+- 经验可传承给其他 Agent
+- 减少重复计算和错误
+
+---
+
+## 🎨 设计原则
+
+### 1. 宁可漏掉，不要错标
+
+不确定的内容不强制沉淀，用户可随时手动补录。误沉淀的清理成本远高于漏沉淀。
+
+### 2. 一条知识 = 一个独立可检索单元
+
+宁可多拆不要少拆，提升检索精度和复用性。
+
+### 3. 数据零容忍，逻辑可推理
+
+数字必须原文有，逻辑可以合理归纳。
+
+### 4. 最少交互，快速上手
+
+首次初始化只问必须问的（路径、是否装语义搜索），其余自动完成。
+
+### 5. 人机协同，而非完全自动化
+
+关键环节保留人工确认，避免自动化错误累积。
+
+---
+
+## 📊 输出示例
+
+### 交互模式确认展示
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+条目 1/3 | 策略沉淀 · 成功案例 | AAC
+采纳程度：可直接采纳
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+标题：5 元红包新客转化实验结论
+
+【背景】
+新客获取成本持续上升，探索不同面额红包对新客转化的影响
+
+【前提/适用条件】
+- 人群：站外未注册新客
+- 渠道：巨浪投放
+- 时间段：2026 年 Q1
+
+【做法】
+- 实验组 A：5 元无门槛红包
+- 实验组 B：10 元无门槛红包
+- 对照组：无红包
+
+【效果】
+- 5 元组转化率：12.3%
+- 10 元组转化率：8.5%
+- 5 元组 ROI：1:3.2
+- 10 元组 ROI：1:4.5
+
+【结论】
+- 小额红包（5 元）更适合新客转化场景
+- 大额红包（10 元）ROI 更优但转化率较低
+- 建议：新客场景优先使用 5 元红包，高价值人群可尝试 10 元
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+共 3 条待入库，确认入库？(Y/修改意见/跳过某条)
+```
+
+---
+
+## 🔗 相关资源
+
+- [Skill-to-Course 交互式课程页面](../knowledge-deposit-zy-course.html) - 可视化了解技能工作原理
+- [宣传文案](../knowledge-deposit-宣传文案.md) - 用于团队推广的介绍材料
+
+---
+
+## 📝 更新日志
+
+### v1.0.0 (2026-04)
+- 初始版本发布
+- 支持四大知识分类
+- 实现智能拆分和冲突检测
+- 支持语义搜索（可选安装）
+- 三种运行模式（交互/静默/对话）
+
+---
+
+## 👥 作者与维护者
+
+- **作者**: hema
