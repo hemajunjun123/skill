@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>连锁门店运营分析 — 装前先看</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F5F7F2;
+      --bg-alt: #EAEFE5;
+      --text: #1E2820;
+      --text-muted: #6A7A6D;
+      --accent: #2E7D4F;       /* 橙熊餐饮：餐饮绿 */
+      --accent-light: rgba(46,125,79,0.10);
+      --accent-mid: rgba(46,125,79,0.28);
+      --accent2: #B85C1A;      /* 橙，警示/数据标注 */
+      --code-bg: #1A2420;
+      --card-shadow: 0 2px 14px rgba(30,40,32,0.08);
+      --radius: 12px;
+      --font-display: 'Noto Serif SC', serif;
+      --font-body: 'Noto Sans SC', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.7; }
+
+    .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent); z-index: 300; width: 0; transition: width 0.15s; }
+
+    .nav-sidebar { position: fixed; right: 28px; top: 50%; transform: translateY(-50%); z-index: 200; display: flex; flex-direction: column; gap: 12px; }
+    .nav-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); opacity: 0.22; cursor: pointer; border: none; transition: all 0.3s; position: relative; padding: 0; }
+    .nav-dot.active { opacity: 1; background: var(--accent); transform: scale(1.5); }
+    .nav-dot:hover { opacity: 0.6; }
+    .nav-dot::after { content: attr(data-label); position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: var(--text); color: #fff; font-family: var(--font-body); font-size: 12px; padding: 3px 9px; border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .nav-dot:hover::after { opacity: 1; }
+
+    .module { min-height: 100dvh; min-height: 100vh; padding: 80px 48px; display: flex; flex-direction: column; justify-content: center; max-width: 960px; margin: 0 auto; opacity: 0; transform: translateY(28px); transition: opacity 0.6s, transform 0.6s; }
+    .module.visible { opacity: 1; transform: none; }
+    .module.alt { background: var(--bg-alt); max-width: 100%; padding-left: max(48px, calc(50% - 480px)); padding-right: max(48px, calc(50% - 480px)); }
+
+    .module-tag { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+    .module-title { font-family: var(--font-display); font-size: clamp(26px, 4vw, 46px); font-weight: 700; line-height: 1.22; margin-bottom: 18px; }
+    .module-subtitle { font-size: 16px; color: var(--text-muted); margin-bottom: 36px; max-width: 580px; }
+
+    /* 能力卡片 */
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 13px; margin-bottom: 28px; }
+    .card { background: #fff; border-radius: var(--radius); padding: 20px; box-shadow: var(--card-shadow); border-top: 3px solid var(--accent); transition: transform 0.2s, box-shadow 0.2s; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(30,40,32,0.12); }
+    .card-icon { font-size: 24px; margin-bottom: 9px; }
+    .card-title { font-weight: 700; font-size: 14px; margin-bottom: 5px; }
+    .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+    /* 3部分流程 */
+    .parts-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 0; border-radius: var(--radius); overflow: hidden; box-shadow: var(--card-shadow); margin: 10px 0 28px; }
+    .part-card { padding: 22px 18px; background: #fff; border-right: 1px solid var(--bg-alt); opacity: 0; transform: translateY(16px); transition: opacity 0.45s, transform 0.45s; }
+    .part-card:last-child { border-right: none; }
+    .part-card.show { opacity: 1; transform: none; }
+    .part-num { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 6px; }
+    .part-title { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+    .part-items { list-style: none; }
+    .part-items li { font-size: 13px; color: var(--text-muted); padding: 2px 0; }
+    .part-items li::before { content: '→ '; color: var(--accent); font-weight: 700; }
+
+    /* 漏斗图 */
+    .funnel-wrap { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 18px 0 30px; }
+    .funnel-step { background: #fff; border-radius: 9px; box-shadow: var(--card-shadow); padding: 14px 28px; text-align: center; width: 100%; max-width: 560px; opacity: 0; transform: scaleX(0.9); transition: opacity 0.4s, transform 0.4s; position: relative; }
+    .funnel-step.show { opacity: 1; transform: scaleX(1); }
+    .funnel-step:not(:last-child)::after { content: '▼'; color: var(--accent); font-size: 14px; position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); }
+    .funnel-step + .funnel-step { margin-top: 18px; }
+    .funnel-label { font-size: 13px; color: var(--text-muted); margin-bottom: 3px; }
+    .funnel-metric { font-weight: 700; font-size: 15px; }
+    .funnel-rate { font-size: 12px; color: var(--accent); font-weight: 600; background: var(--accent-light); padding: 2px 8px; border-radius: 10px; display: inline-block; margin-top: 4px; }
+
+    /* 执行清单 */
+    .checklist { background: #fff; border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--card-shadow); margin: 10px 0; }
+    .checklist-title { font-weight: 700; font-size: 15px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .checklist-item { display: flex; gap: 11px; padding: 8px 0; border-bottom: 1px solid var(--bg); font-size: 14px; line-height: 1.55; }
+    .checklist-item:last-child { border-bottom: none; }
+    .check-box { width: 20px; height: 20px; border: 2px solid var(--accent); border-radius: 5px; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s; }
+    .check-box.checked { background: var(--accent); }
+    .check-box.checked::after { content: '✓'; color: #fff; font-size: 12px; font-weight: 700; }
+    .check-label { flex: 1; }
+    .check-label strong { color: var(--text); }
+    .check-label span { color: var(--text-muted); display: block; font-size: 13px; }
+
+    /* 警示框：正误对比 */
+    .rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0 26px; }
+    .rule-box { border-radius: var(--radius); padding: 16px 18px; font-size: 13.5px; line-height: 1.6; }
+    .rule-box.wrong { background: #FFF4F2; border-left: 4px solid #d95040; }
+    .rule-box.right { background: var(--accent-light); border-left: 4px solid var(--accent); }
+    .rule-box-title { font-weight: 700; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+    .rule-box.wrong .rule-box-title { color: #d95040; }
+    .rule-box.right .rule-box-title { color: var(--accent); }
+    code.inline { background: var(--code-bg); color: #a6e3a1; padding: 2px 7px; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; }
+
+    /* 数据表 */
+    .data-table { width: 100%; border-collapse: collapse; border-radius: var(--radius); overflow: hidden; box-shadow: var(--card-shadow); font-size: 13px; margin: 10px 0 26px; }
+    .data-table thead th { background: var(--accent); color: #fff; padding: 10px 14px; text-align: left; font-weight: 700; font-size: 12px; }
+    .data-table tbody td { padding: 9px 14px; border-bottom: 1px solid var(--bg); background: #fff; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: var(--accent-light); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .badge.down { background: #fde8e6; color: #d95040; }
+    .badge.up { background: var(--accent-light); color: var(--accent); }
+    .badge.flat { background: var(--bg-alt); color: var(--text-muted); }
+
+    /* SQL 代码块 */
+    .sql-block { background: var(--code-bg); border-radius: var(--radius); padding: 16px 20px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; overflow-x: auto; margin: 10px 0 22px; box-shadow: var(--card-shadow); }
+    .sql-kw { color: #89b4fa; }
+    .sql-fn { color: #cba6f7; }
+    .sql-str { color: #a6e3a1; }
+    .sql-cmt { color: #6c7086; font-style: italic; }
+    .sql-tbl { color: #fab387; }
+
+    /* 对话气泡 */
+    .chat-wrap { background: #fff; border-radius: var(--radius); padding: 20px 24px; max-width: 600px; box-shadow: var(--card-shadow); }
+    .chat-bubble { display: flex; gap: 11px; margin-bottom: 12px; opacity: 0; transform: translateX(-14px); transition: opacity 0.4s, transform 0.4s; }
+    .chat-bubble.right { flex-direction: row-reverse; transform: translateX(14px); }
+    .chat-bubble.show { opacity: 1; transform: none; }
+    .bubble-av { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .bubble-body { display: flex; flex-direction: column; max-width: 82%; }
+    .bubble-lbl { font-size: 10px; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px; }
+    .chat-bubble.right .bubble-lbl { text-align: right; }
+    .bubble-txt { background: var(--bg-alt); border-radius: 14px; padding: 9px 14px; font-size: 13.5px; line-height: 1.55; }
+    .chat-bubble.right .bubble-txt { background: var(--accent); color: #fff; }
+
+    /* 触发词 */
+    .trigger-tags { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+    .trigger-tag { background: var(--accent-light); color: var(--accent); padding: 5px 13px; border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid var(--accent-mid); }
+
+    /* 输入输出 */
+    .io-example { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; background: #fff; border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--card-shadow); margin: 12px 0; }
+    .io-box { background: var(--bg-alt); border-radius: 8px; padding: 12px; font-size: 13.5px; line-height: 1.55; }
+    .io-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+    .io-label.input { color: var(--text-muted); }
+    .io-label.output { color: var(--accent); }
+    .io-arrow { font-size: 20px; color: var(--accent); }
+
+    /* 测验 */
+    .quiz-block { background: #fff; border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--card-shadow); margin: 14px 0; }
+    .quiz-q { font-weight: 700; font-size: 15px; line-height: 1.6; margin-bottom: 16px; }
+    .quiz-opts { display: flex; flex-direction: column; gap: 8px; }
+    .quiz-opt { display: flex; gap: 11px; padding: 10px 13px; border: 2px solid var(--bg-alt); border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.18s; align-items: flex-start; }
+    .quiz-opt:hover { border-color: var(--accent); background: var(--accent-light); }
+    .quiz-opt.correct { border-color: var(--accent); background: var(--accent-light); pointer-events: none; }
+    .quiz-opt.wrong { border-color: #d95040; background: #fdf2f1; }
+    .opt-lbl { font-weight: 700; color: var(--text-muted); min-width: 18px; flex-shrink: 0; }
+    .quiz-fb { margin-top: 13px; padding: 11px 14px; border-radius: 8px; font-size: 13.5px; line-height: 1.55; display: none; }
+    .quiz-fb.show { display: block; }
+    .quiz-fb.correct { background: var(--accent-light); color: #1A5030; border-left: 4px solid var(--accent); }
+    .quiz-fb.wrong { background: #fdf2f1; color: #b83a2c; border-left: 4px solid #d95040; }
+
+    /* 交付物树 */
+    .deliverable-tree { background: var(--code-bg); border-radius: var(--radius); padding: 18px 22px; font-family: var(--font-mono); font-size: 13px; line-height: 1.8; box-shadow: var(--card-shadow); color: #cdd6f4; margin: 12px 0 26px; overflow-x: auto; }
+    .tree-root { color: #a6e3a1; }
+    .tree-doc1 { color: #89dceb; }
+    .tree-doc-n { color: #fab387; }
+    .tree-branch { color: #6c7086; }
+
+    .cta-block { margin-top: 36px; padding: 22px 24px; background: var(--accent-light); border-radius: var(--radius); border-left: 4px solid var(--accent); }
+    .cta-block strong { color: var(--accent); font-size: 15px; }
+    .cta-block p { margin-top: 8px; font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+    .divider { height: 1px; background: linear-gradient(to right, transparent, var(--accent-mid), transparent); margin: 26px 0; }
+    .warn-chip { display: inline-flex; align-items: center; gap: 5px; background: #FFF8EC; border: 1px solid #F5A623; color: #B06A00; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+
+    /* 获取区 */
+    .skill-download { max-width: 960px; margin: 40px auto 0; padding: 28px 32px; background: #fff; border-radius: var(--radius); box-shadow: var(--card-shadow); }
+    .skill-download h2 { font-family: var(--font-display); font-size: 22px; margin: 0 0 16px; }
+    .download-desc { font-size: 14px; color: var(--text-muted); line-height: 1.7; margin-bottom: 16px; }
+    .download-image { max-width: 100%; border-radius: 10px; margin-bottom: 16px; }
+    .download-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .download-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-family: var(--font-body); text-decoration: none; transition: opacity 0.18s; }
+    .download-btn:hover { opacity: 0.9; }
+    .download-btn.secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+    .download-btn.secondary:hover { background: var(--accent-light); }
+
+    @media (max-width: 640px) {
+      .module { padding: 60px 20px; }
+      .parts-grid, .rule-grid { grid-template-columns: 1fr; }
+      .io-example { grid-template-columns: 1fr; }
+      .io-arrow { transform: rotate(90deg); justify-self: center; }
+      .nav-sidebar { display: none; }
+      .skill-download { margin: 20px 12px 0; padding: 24px 20px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+<nav class="nav-sidebar" id="nav"></nav>
+
+<!-- ═══ Skill 获取区 ═══ -->
+<div class="skill-download" id="skill-download">
+  <h2>📥 获取这个 Skill</h2>
+  <p class="download-desc">连锁门店运营分析 skill — 自动查询门店流量与订单数据，生成横向汇总表，识别波动门店并进行三层根因诊断。</p>
+  <div class="download-actions">
+    <a class="download-btn" href="https://example.com/skills/chain-store-analysis" target="_blank">🔗 获取 Skill</a>
+  </div>
+</div>
+
+<!-- ═══ 模块1：能做什么 ═══ -->
+<section class="module" id="m1">
+  <div class="module-tag">🍊 第一章</div>
+  <h1 class="module-title">连锁门店<br>运营分析，一键跑通</h1>
+  <p class="module-subtitle">
+    不是帮你写分析结论——是告诉 AI 怎么查数据、怎么算指标、怎么写报告，全程有规范约束，不造数。
+  </p>
+
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-title">门店横向汇总表</div>
+      <div class="card-desc">14列指标对比所有连锁门店，按销量降序排列，一张表看全局</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔍</div>
+      <div class="card-title">波动门店自动识别</div>
+      <div class="card-desc">日均>10单且波动>5%自动筛出，其余标为平稳/小店，聚焦精力</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌊</div>
+      <div class="card-title">流量漏斗拆解</div>
+      <div class="card-desc">曝光→点击→提单→成单，广告/自然分别拆算，定位问题环节</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🍱</div>
+      <div class="card-title">商品维度根因</div>
+      <div class="card-desc">Top10商品 WoW 变化贡献度，爆款商品单独分析</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📝</div>
+      <div class="card-title">学城文档自动生成</div>
+      <div class="card-desc">汇总报告 + 各重点门店子文档，结构化落到 wiki.example.com</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">✅</div>
+      <div class="card-title">9项数据规范内置</div>
+      <div class="card-desc">UV计算、日均分母、营业状态判断……防止 AI 造假数的核心约束</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <p style="font-size:14px; font-weight:700; margin-bottom:12px;">分析框架分三大部分：</p>
+
+  <div class="parts-grid" id="parts">
+    <div class="part-card">
+      <div class="part-num">第一部分</div>
+      <div class="part-title">📋 门店销量汇总表</div>
+      <ul class="part-items">
+        <li>全部连锁门店 14 列指标</li>
+        <li>销量/单价/流量/转化 4 大类</li>
+        <li>性能分类：波动/平稳/小店</li>
+        <li>整体 WoW 趋势汇总</li>
+      </ul>
+    </div>
+    <div class="part-card">
+      <div class="part-num">第二部分</div>
+      <div class="part-title">📈 整体表现总结</div>
+      <ul class="part-items">
+        <li>全店日均总单量 + WoW</li>
+        <li>波动门店列表和幅度</li>
+        <li>新店销量拉动情况</li>
+        <li>每家波动门店简述原因</li>
+      </ul>
+    </div>
+    <div class="part-card">
+      <div class="part-num">第三部分</div>
+      <div class="part-title">🔬 门店波动深度诊断</div>
+      <ul class="part-items">
+        <li>6步分析框架（日→流→品）</li>
+        <li>广告 vs 自然流量拆分</li>
+        <li>三层递进式根因</li>
+        <li>每店生成独立学城子文档</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 模块2：怎么触发 ═══ -->
+<section class="module alt" id="m2">
+  <div class="module-tag">💬 第二章</div>
+  <h2 class="module-title">你只需要说<br>"分析上周数据"</h2>
+  <p class="module-subtitle">这个 skill 帮你把数据问题转换成完整的分析流程，包括怎么写 SQL、怎么算指标</p>
+
+  <div class="chat-wrap" id="chat-main"></div>
+
+  <div class="divider"></div>
+  <p style="font-size:14px; font-weight:700; margin-bottom:10px;">这些请求都能触发：</p>
+  <div class="trigger-tags">
+    <span class="trigger-tag">分析上周连锁门店数据</span>
+    <span class="trigger-tag">哪个门店销量下降最多</span>
+    <span class="trigger-tag">帮我出连锁门店周报</span>
+    <span class="trigger-tag">分析XX门店的波动原因</span>
+    <span class="trigger-tag">对比本周和上周</span>
+    <span class="trigger-tag">生成销量分析报告</span>
+  </div>
+</section>
+
+<!-- ═══ 模块3：数据规范（最关键）═══ -->
+<section class="module" id="m3">
+  <div class="module-tag">⚠️ 第三章</div>
+  <h2 class="module-title">AI 最容易在哪里<br>算错你的数据？</h2>
+  <p class="module-subtitle">这个 skill 内置了 9 项数据规范，专门堵这些坑</p>
+
+  <!-- 最关键：UV 算法 -->
+  <p style="font-weight:700; font-size:15px; margin-bottom:14px;">
+    <span class="warn-chip">⭐⭐⭐ 最关键</span>&nbsp; UV 计算规范——一旦算错，所有转化率都跟着错
+  </p>
+
+  <div class="rule-grid">
+    <div class="rule-box wrong">
+      <div class="rule-box-title">❌ 禁止（会低估 40-50%）</div>
+      <code class="inline">COUNT(DISTINCT user_id) / 7.0</code>
+      <p style="margin-top:9px; font-size:13px; color:#7a2020;">把整周用户去重后除以 7——用户可能周一和周五都来，只被算一次，严重低估日均 UV</p>
+    </div>
+    <div class="rule-box right">
+      <div class="rule-box-title">✅ 正确（每日先去重再平均）</div>
+      <code class="inline">AVG(每日 COUNT DISTINCT user_id)</code>
+      <p style="margin-top:9px; font-size:13px; color:#1A5030;">每天分别算去重用户数，再对 7 天取平均——真实反映每日有多少独立用户看到你的店</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <p style="font-weight:700; font-size:15px; margin-bottom:14px;">其他 8 项必须遵守的规范：</p>
+
+  <div class="checklist" id="checklist">
+    <div class="checklist-title">🛡️ 执行前检查清单</div>
+
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>日均分母规范</strong>
+        <span>日均单量 = 总订单 ÷ 7（周数据固定除以7，即使某天订单为0也不缩减）</span>
+      </div>
+    </div>
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>营业状态判断规范</strong>
+        <span>不能用订单数=0判断未营业；正确方式：曝光UV > 0 则视为营业，曝光UV = 0 则视为未营业</span>
+      </div>
+    </div>
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>订单数据过滤</strong>
+        <span>只统计成单：<code class="inline">order_status = 'completed'</code></span>
+      </div>
+    </div>
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>门店列表过滤</strong>
+        <span><code class="inline">store_type=1</code>（主站连锁门店）+ <code class="inline">store_status=3</code> + 排除测试店（store_flag='test'）</span>
+      </div>
+    </div>
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>14列指标全部计算</strong>
+        <span>从日均单量到 UV_CXR 变化，不能缺列</span>
+      </div>
+    </div>
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>转化率计算准确</strong>
+        <span>UV_CTR = 点击UV ÷ 曝光UV；UV_CXR = 日均订单 ÷ 日均曝光UV</span>
+      </div>
+    </div>
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>数据必须来自真实查询</strong>
+        <span>禁止编造、近似值或硬编码。所有数字必须来自 Hive SQL 实际执行结果</span>
+      </div>
+    </div>
+    <div class="checklist-item">
+      <div class="check-box" onclick="this.classList.toggle('checked')"></div>
+      <div class="check-label">
+        <strong>指标维度标注清晰</strong>
+        <span>标注 PV 还是 UV，日均还是周累计，避免歧义</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 模块4：幕后原理（SQL + 漏斗）═══ -->
+<section class="module alt" id="m4">
+  <div class="module-tag">⚙️ 第四章</div>
+  <h2 class="module-title">一个"门店销量下降"<br>背后的 6 步诊断</h2>
+  <p class="module-subtitle">第三部分对每个波动门店的深度分析流程——像医生问诊一样逐层排查</p>
+
+  <!-- 正确UV SQL -->
+  <p style="font-weight:700; font-size:14px; margin-bottom:10px;">✅ 正确的日均 UV 查询写法（每日去重再平均）：</p>
+  <div class="sql-block">
+    <span class="sql-kw">SELECT</span> <span class="sql-fn">AVG</span>(daily_uv) <span class="sql-kw">AS</span> avg_daily_uv<br>
+    <span class="sql-kw">FROM</span> (<br>
+    &nbsp;&nbsp;<span class="sql-kw">SELECT</span> dt, <span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> user_id) <span class="sql-kw">AS</span> daily_uv<br>
+    &nbsp;&nbsp;<span class="sql-kw">FROM</span> <span class="sql-tbl">dw_retail.dws_store_flow_entry_daily_di</span><br>
+    &nbsp;&nbsp;<span class="sql-kw">WHERE</span> poi_id = <span class="sql-str">'目标门店ID'</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="sql-kw">AND</span> dt <span class="sql-kw">BETWEEN</span> <span class="sql-str">'2026-03-09'</span> <span class="sql-kw">AND</span> <span class="sql-str">'2026-03-15'</span><br>
+    &nbsp;&nbsp;<span class="sql-kw">GROUP BY</span> dt<br>
+    ) t <span class="sql-cmt">-- ✅ 每日先 COUNT DISTINCT，再 AVG</span>
+  </div>
+
+  <div class="divider"></div>
+  <p style="font-weight:700; font-size:15px; margin-bottom:16px;">6步诊断流程（以某门店下降为例）：</p>
+
+  <!-- 漏斗步骤 -->
+  <div class="funnel-wrap" id="funnel">
+    <div class="funnel-step">
+      <div class="funnel-label">第一步</div>
+      <div class="funnel-metric">整体销量概览</div>
+      <div class="funnel-rate">订单量 / 单均实付 / UV 全面对比</div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-label">第二步</div>
+      <div class="funnel-metric">每日变化分析</div>
+      <div class="funnel-rate">拆分 7 天，找波动集中在哪几天</div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-label">第三步</div>
+      <div class="funnel-metric">🌊 流量转化漏斗</div>
+      <div class="funnel-rate">曝光UV → 点击UV → 提单UV → 成单，找断层</div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-label">第四步</div>
+      <div class="funnel-metric">广告 vs 自然流量拆分</div>
+      <div class="funnel-rate">分别计算两路流量的漏斗，判断波动来源</div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-label">第五步</div>
+      <div class="funnel-metric">🍱 商品维度分析</div>
+      <div class="funnel-rate">Top10 商品 WoW 变化，爆款商品单独追</div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-label">第六步</div>
+      <div class="funnel-metric">三层递进式根因输出</div>
+      <div class="funnel-rate">产品端 → 流量端 → 时间端，层层收口</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <p style="font-weight:700; font-size:14px; margin-bottom:12px;">诊断输出示例（流量漏斗表）：</p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>指标</th>
+        <th>上上周</th>
+        <th>上周</th>
+        <th>变化</th>
+        <th>问题阶段</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>广告曝光UV（日均）</td>
+        <td>3,500</td>
+        <td>3,100</td>
+        <td><span class="badge down">-12%</span></td>
+        <td>⚠️ 流量下降</td>
+      </tr>
+      <tr>
+        <td>广告进店率（UV_CTR）</td>
+        <td>9.2%</td>
+        <td>8.8%</td>
+        <td><span class="badge down">-0.4pp</span></td>
+        <td>轻微吸引力问题</td>
+      </tr>
+      <tr>
+        <td>广告下单转化率</td>
+        <td>2.5%</td>
+        <td>1.9%</td>
+        <td><span class="badge down">-0.6pp</span></td>
+        <td>🔴 <strong>转化问题</strong></td>
+      </tr>
+      <tr>
+        <td>自然曝光UV（日均）</td>
+        <td>2,100</td>
+        <td>1,800</td>
+        <td><span class="badge down">-14%</span></td>
+        <td>⚠️ 流量下降</td>
+      </tr>
+      <tr>
+        <td>自然进店率（UV_CTR）</td>
+        <td>6.5%</td>
+        <td>6.8%</td>
+        <td><span class="badge up">+0.3pp</span></td>
+        <td>✅ 吸引力改善</td>
+      </tr>
+      <tr>
+        <td>自然下单转化率</td>
+        <td>3.0%</td>
+        <td>2.7%</td>
+        <td><span class="badge down">-0.3pp</span></td>
+        <td>轻微转化问题</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══ 模块5：交付物结构 ═══ -->
+<section class="module" id="m5">
+  <div class="module-tag">📦 第五章</div>
+  <h2 class="module-title">最终交付，<br>一份总报告 + N 份子文档</h2>
+  <p class="module-subtitle">跑完分析后自动生成学城文档，结构清晰，方便 review</p>
+
+  <div class="deliverable-tree">
+    <span class="tree-root">https://wiki.example.com/pages/store-analysis-2024/</span><br>
+    <span class="tree-branch">└──</span> <span class="tree-doc1">连锁门店周销量综合分析报告（0310-0316）</span> <span style="color:#6c7086;">[文档1：汇总]</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-branch">├──</span> <span class="tree-doc-n">橙熊餐饮（朝阳路店）- 周销量波动分析（0310-0316）</span> <span style="color:#6c7086;">[子文档]</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-branch">├──</span> <span class="tree-doc-n">橙熊餐饮（西湖大道店）- 周销量波动分析（0310-0316）</span> <span style="color:#6c7086;">[子文档]</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-branch">└──</span> <span class="tree-doc-n">... 其他波动门店报告（均为文档1的子文档）</span>
+  </div>
+
+  <div class="divider"></div>
+  <p style="font-weight:700; font-size:14px; margin-bottom:14px;">3 个场景，看完就懂：</p>
+
+  <div class="io-example">
+    <div class="io-box">
+      <div class="io-label input">👤 你说</div>
+      帮我分析上周（3月9日-3月15日）连锁门店数据
+    </div>
+    <div class="io-arrow">→</div>
+    <div class="io-box">
+      <div class="io-label output">✅ 你得到</div>
+      <strong>文档1：</strong>全部连锁门店 14 列对比表，识别出 3 家波动门店（日均>10单 且 WoW>5%），整体周环比 -8.2%，新店滨江新城店贡献 +15 单
+    </div>
+  </div>
+
+  <div class="io-example">
+    <div class="io-box">
+      <div class="io-label input">👤 你说</div>
+      分析朝阳路店的下降原因
+    </div>
+    <div class="io-arrow">→</div>
+    <div class="io-box">
+      <div class="io-label output">✅ 你得到</div>
+      <strong>门店子文档：</strong>三层根因——①爆款套餐A下降23%（占门店下降88%）②广告流量进店率下降2.6pp（广告吸引力问题）③周五、周六集中下降占全周44%（周末问题）
+    </div>
+  </div>
+
+  <div class="io-example">
+    <div class="io-box">
+      <div class="io-label input">👤 你说</div>
+      为什么UV_CXR算出来只有0.1%？
+    </div>
+    <div class="io-arrow">→</div>
+    <div class="io-box">
+      <div class="io-label output">⚠️ skill 会纠正</div>
+      检测到 UV 用了"周聚合÷7"算法，低估约 40-50%。已按规范重新用"每日 COUNT DISTINCT 再 AVG"重算，UV_CXR 修正为 0.8%
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 模块6：测验 ═══ -->
+<section class="module alt" id="m6">
+  <div class="module-tag">🧪 第六章</div>
+  <h2 class="module-title">3 道场景题——<br>选出 AI 该怎么做</h2>
+  <p class="module-subtitle">不考 SQL 语法，考你对分析规范的判断</p>
+
+  <!-- 题1：UV计算 -->
+  <div class="quiz-block">
+    <div class="quiz-q">
+      📊 你让 AI 计算上周日均曝光 UV。AI 写了这条 SQL：<br>
+      <code class="inline" style="margin-top:8px;display:inline-block;">SELECT COUNT(DISTINCT user_id) / 7.0 FROM flow_table WHERE dt BETWEEN '2026-03-09' AND '2026-03-15'</code><br>
+      <br>结果跑出来是 1,200。这个数对吗？
+    </div>
+    <div class="quiz-opts">
+      <div class="quiz-opt" data-c="0">
+        <span class="opt-lbl">A</span>
+        对，周聚合去重后除以 7，就是日均 UV
+      </div>
+      <div class="quiz-opt" data-c="1">
+        <span class="opt-lbl">B</span>
+        不对，这样会低估 40-50%。应该每天分别 COUNT DISTINCT，再求 7 天平均
+      </div>
+      <div class="quiz-opt" data-c="0">
+        <span class="opt-lbl">C</span>
+        不影响，因为 WoW 对比时误差会相互抵消
+      </div>
+    </div>
+    <div class="quiz-fb"
+      data-right="正确！跨天去重再除以7，会把周一和周五都来的用户只算一次，严重低估日均UV。转化率 UV_CTR、UV_CXR 都用 UV 作分母，UV 一错全错。skill 规范内置的正确做法：每日分别 COUNT DISTINCT，再 AVG。"
+      data-wrong="这是这个 skill 最核心的规范之一：周聚合÷7 会低估 40-50% UV。同一用户在不同天出现只被算一次，拉低了日均。正确做法是每天各跑一次 COUNT DISTINCT，再 AVG 这 7 个数。">
+    </div>
+  </div>
+
+  <!-- 题2：营业状态判断 -->
+  <div class="quiz-block">
+    <div class="quiz-q">
+      🏪 某家新门店周一至周三没有订单，周四到周日有订单，共计 40 单。AI 判断：该店本周仅营业 4 天，日均单量 = 40 ÷ 4 = 10 单。这样对吗？
+    </div>
+    <div class="quiz-opts">
+      <div class="quiz-opt" data-c="0">
+        <span class="opt-lbl">A</span>
+        对，有订单才算营业，日均单量 = 40÷4 = 10 单
+      </div>
+      <div class="quiz-opt" data-c="0">
+        <span class="opt-lbl">B</span>
+        不清楚，需要问运营确认门店是否周一就开业了
+      </div>
+      <div class="quiz-opt" data-c="1">
+        <span class="opt-lbl">C</span>
+        不对。不能用订单数是否为0判断营业。正确：看曝光UV，若曝光UV > 0 则视为营业；日均单量 = 40 ÷ 7 = 5.7 单
+      </div>
+    </div>
+    <div class="quiz-fb"
+      data-right="答对了！订单为0可能是营业但未成单（比如当天菜品全卖完了），不能据此认定未营业。skill 规范：以曝光UV > 0 判断营业——有人看到店就算营业。日均分母固定为统计周期天数，不缩减。"
+      data-wrong="订单=0不等于未营业！可能菜品卖完或其他原因。skill 规范要求：以曝光UV > 0 判断营业；若明确有开业日期则优先使用开业日期。日均分母固定为统计周期总天数（周数据÷7），不能只算有订单的天。">
+    </div>
+  </div>
+
+  <!-- 题3：波动门店筛选 -->
+  <div class="quiz-block">
+    <div class="quiz-q">
+      🔍 门店销量汇总表出来了，其中某家门店本周日均 8 单，WoW 下降 -30%。另一家门店日均 25 单，WoW 下降 -8%。哪家进入第三部分深度分析？
+    </div>
+    <div class="quiz-opts">
+      <div class="quiz-opt" data-c="0">
+        <span class="opt-lbl">A</span>
+        日均 8 单那家，因为下降幅度 -30% 更严重
+      </div>
+      <div class="quiz-opt" data-c="0">
+        <span class="opt-lbl">B</span>
+        两家都进入深度分析
+      </div>
+      <div class="quiz-opt" data-c="1">
+        <span class="opt-lbl">C</span>
+        只有日均 25 单那家（满足：日均>10单 且 波动>5%）；8 单那家属于"小门店"，暂不分析
+      </div>
+    </div>
+    <div class="quiz-fb"
+      data-right="正确！skill 的筛选条件很明确：日均 > 10单 且 波动幅度 > 5%，两个条件都满足才进第三部分。日均 8 单的属于小门店（可能刚开业），下降 30% 是正常波动或数据本就不稳定，没有深度分析价值。"
+      data-wrong="skill 的波动门店筛选条件：日均 > 10单 且 波动 > 5%。日均 8 单的属于"小门店"类别，即使波动幅度大，也不列入重点分析——小基数的大幅波动通常不具统计意义。只有日均 25 单、-8% 的那家满足两个条件。">
+    </div>
+  </div>
+
+  <div class="cta-block">
+    <strong>🍊 你现在明白了……</strong>
+    <p>这个 skill 的核心价值：不是帮你生成结论，而是<strong>约束 AI 使用正确的算法</strong>——每日去重 UV、固定分母日均、曝光UV判营业……9 项规范把 AI 最容易翻车的地方全部堵住。</p>
+    <p style="margin-top:10px;">数据源：<strong>dw_retail.dws_store_flow_entry_daily_di</strong>（流量）+ <strong>dw_retail.dws_store_order_info_di</strong>（订单）</p>
+    <p style="margin-top:8px;">安装：<code class="inline">mtskills i chain-store-analysis</code></p>
+  </div>
+</section>
+
+<script>
+const NAV_LABELS = ['能做什么','怎么触发','数据规范','诊断流程','交付物','小测验'];
+const moduleIds = ['m1','m2','m3','m4','m5','m6'];
+
+const nav = document.getElementById('nav');
+moduleIds.forEach((id, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'nav-dot' + (i === 0 ? ' active' : '');
+  btn.dataset.target = id;
+  btn.dataset.label = NAV_LABELS[i];
+  btn.addEventListener('click', () => document.getElementById(id).scrollIntoView({ behavior: 'smooth' }));
+  nav.appendChild(btn);
+});
+
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100;
+  document.getElementById('progress').style.width = Math.min(pct, 100) + '%';
+}, { passive: true });
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('visible');
+    const id = e.target.id;
+    document.querySelectorAll('.nav-dot').forEach(d => d.classList.toggle('active', d.dataset.target === id));
+    if (id === 'm1') {
+      document.querySelectorAll('.part-card').forEach((c, i) =>
+        setTimeout(() => c.classList.add('show'), i * 200));
+    }
+    if (id === 'm4') {
+      document.querySelectorAll('.funnel-step').forEach((s, i) =>
+        setTimeout(() => s.classList.add('show'), i * 200));
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.module').forEach(m => observer.observe(m));
+
+// ===== 文件下载（嵌入式 base64 文件） =====
+function downloadEmbeddedFile(b64, filename) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const blob = new Blob([arr]);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// 测验
+document.querySelectorAll('.quiz-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    const block = opt.closest('.quiz-block');
+    if (block.dataset.done) return;
+    const ok = opt.dataset.c === '1';
+    // 清除之前的错误标记，允许重试
+    block.querySelectorAll('.quiz-opt.wrong').forEach(el => el.classList.remove('wrong'));
+    opt.classList.add(ok ? 'correct' : 'wrong');
+    // 只有答对才锁定，不揭示正确答案
+    if (ok) block.dataset.done = '1';
+    const fb = block.querySelector('.quiz-fb');
+    if (fb) {
+      fb.classList.remove('show', 'correct', 'wrong');
+      fb.classList.add('show', ok ? 'correct' : 'wrong');
+      fb.textContent = ok ? '✅ ' + fb.dataset.right : '❌ ' + fb.dataset.wrong;
+    }
+  });
+});
+
+// 对话
+function animateChat(id, bubbles) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  bubbles.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = 'chat-bubble' + (b.r ? ' right' : '');
+    d.innerHTML = `
+      <div class="bubble-av">${b.av}</div>
+      <div class="bubble-body">
+        <div class="bubble-lbl">${b.lbl}</div>
+        <div class="bubble-txt">${b.txt}</div>
+      </div>`;
+    c.appendChild(d);
+    setTimeout(() => d.classList.add('show'), i * 750 + 400);
+  });
+}
+
+animateChat('chat-main', [
+  { av: '👤', lbl: '你', txt: '帮我分析上周（3月9日-3月15日）连锁门店销售数据', r: false },
+  { av: '🍊', lbl: 'skill', txt: '好，开始执行分析。首先查询符合条件的门店列表（store_type=1, status=3, 排除测试店）……', r: true },
+  { av: '🍊', lbl: 'skill', txt: '门店列表确认：共 8 家连锁门店。正在逐门店查询流量数据（每日分别 COUNT DISTINCT user_id，再取周均）……', r: true },
+  { av: '🍊', lbl: 'skill', txt: '汇总表生成完毕。识别到 2 家波动门店（日均>10单且WoW>5%）：朝阳路店（-18%）、西湖大道店（+12%）。整体日均总单量 WoW -4.3%，新店贡献 +8 单。正在启动深度诊断……', r: true },
+  { av: '👤', lbl: '你', txt: '好，朝阳路店的下降原因是什么？', r: false },
+  { av: '🍊', lbl: 'skill', txt: '三层根因：①爆款套餐A下降23%，占门店下降88%；②广告流量进店率下降2.6pp；③问题集中在周五+周六，占全周下降44%。已在文档1下创建子文档：橙熊餐饮（朝阳路店）-周销量波动分析（0309-0315）', r: true },
+]);
+</script>
+</body>
+</html>
