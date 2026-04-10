@@ -54,8 +54,14 @@ skill-to-course/
 ---
 
 ## 致谢 / Credits
+本 skill 是在前任基础上做了功能更改：
+1. 修复前人测试时判断展示的异常
+2. 新增获取 skill 的方式，能直接进行 skill 宣传
+3. 新增与同类 skill 的对比，助力后人继续迭代
 
-本 skill 的核心思路来源于 **codebase-to-course** 项目：
+感谢作者 wwb（https://github.com/wubenben0310/skill-to-course）
+
+而原作者的skill 的核心思路来源于 **codebase-to-course** 项目：
 
 > 📎 https://github.com/zarazhangrui/codebase-to-course
 
