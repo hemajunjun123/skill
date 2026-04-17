@@ -59,7 +59,7 @@ skill-to-course/
 2. 新增获取 skill 的方式，能直接进行 skill 宣传
 3. 新增与同类 skill 的对比，助力后人继续迭代
 
-感谢作者 wwb（https://github.com/wubenben0310/skill-to-course）
+感谢作者 wwb：https://github.com/wubenben0310/skill-to-course
 
 而原作者的skill 的核心思路来源于 **codebase-to-course** 项目：
 
